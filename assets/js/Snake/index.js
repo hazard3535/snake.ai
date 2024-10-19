@@ -2,13 +2,15 @@ import { rnd } from "../functions.js";
 
 import DQNAgent from "./AI.js";
 
+const isUserControl = !true;
+
 export default class Snake {
   directions = ["up", "down", "left", "right"];
   constructor({ gridSize = 10, pixelSize = 40 } = {}) {
     this.pixelSize = pixelSize;
     this.gridSize = gridSize;
     this.rectSize = this.gridSize * this.pixelSize;
-    this.agent = new DQNAgent(this.directions, 4);
+    this.agent = new DQNAgent(this.directions, 9);
     this.round = 0;
     //
     this.resetGame();
@@ -31,7 +33,9 @@ export default class Snake {
     document.addEventListener("keydown", this.changeDirectionFunc);
 
     this.render();
-    // setInterval(this.render.bind(this), 1000 - this.level * 50);
+    if (isUserControl) {
+      setInterval(this.render.bind(this), 1000 - this.level * 50);
+    }
   }
 
   update() {
@@ -49,13 +53,14 @@ export default class Snake {
     })();
 
     this.snake.unshift(head);
+    const done = this.isGameOver();
 
     // Check for food collision
     if (head.x === this.food.x && head.y === this.food.y) {
       this.food = this.getRandomFoodPosition();
       this.score++;
       this.reward = true;
-    } else {
+    } else if(!done) {
       this.snake.pop();
     }
 
@@ -121,24 +126,24 @@ export default class Snake {
     // Выполняет действие и возвращает новое состояние, награду и флаг завершения игры
     this.direction = action;
     this.update();
-    const reward = this.getReward();
     const done = this.isGameOver();
+    const reward = this.getReward();
     return { state: this.getState(), reward, done };
   }
   async render() {
-    // const step = this.step();
-
     const state = this.getState();
 
-    const action = await this.agent.act(state);
-
+    const action = isUserControl ? undefined : await this.agent.act(state);
     const { state: nextState, reward, done } = this.step(action);
-    // console.log("action", );
-    await this.agent.train(state, action, reward, nextState, done);
+    if (!isUserControl) {
+      await this.agent.train(state, action, reward, nextState, done);
+    }
 
     if (done) {
       this.gameOverItem.style.display = "block";
       this.resetGame(); // Check for collisions
+
+      if (isUserControl) return;
       return this.render();
     }
     this.gameOverItem.style.display = "none";
@@ -157,7 +162,7 @@ export default class Snake {
         score: this.score,
       });
     }
-    this.render();
+    if (!isUserControl) this.render();
   }
   changeDirection(event) {
     switch (event.key) {
@@ -187,14 +192,32 @@ export default class Snake {
   }
   getState() {
     // Возвращает текущее состояние игры
-    return [this.snake[0].x, this.snake[0].y, this.food.x, this.food.y];
-    // return {
-    //   snake: [...this.snake],
-    //   food: { ...this.food },
-    //   direction: this.direction,
-    // };
+    const head = this.snake[0];
+    const food = this.food;
+    const direction = this.direction;
+    const distanceToFood = Math.sqrt(
+      Math.pow(head.x - food.x, 2) + Math.pow(head.y - food.y, 2)
+    );
+    return [
+      head.x,
+      head.y,
+      food.x,
+      food.y,
+      direction === "up" ? 1 : 0,
+      direction === "down" ? 1 : 0,
+      direction === "left" ? 1 : 0,
+      direction === "right" ? 1 : 0,
+      distanceToFood,
+    ];
   }
   isGameOver(head = this.snake[0]) {
+    // if (this.snake.length === 2 &&
+    //   this.snake.some(
+    //     (segment) => segment.x === head.x && segment.y === head.y
+    //   )) {
+    //     return true;
+    //   }
+
     return (
       head.x < 0 ||
       head.x >= this.gridSize ||
