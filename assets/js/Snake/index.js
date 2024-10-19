@@ -3,6 +3,7 @@ import { rnd } from "../functions.js";
 import DQNAgent from "./AI.js";
 
 const isUserControl = !true;
+const isTraining = true;
 
 export default class Snake {
   directions = ["up", "down", "left", "right"];
@@ -10,8 +11,9 @@ export default class Snake {
     this.pixelSize = pixelSize;
     this.gridSize = gridSize;
     this.rectSize = this.gridSize * this.pixelSize;
-    this.agent = new DQNAgent(this.directions, 9);
+    this.agent = new DQNAgent(this.directions, 10);
     this.round = 0;
+    this.maxScore = 0;
     //
     this.resetGame();
     this.init();
@@ -20,8 +22,10 @@ export default class Snake {
     this.canvas = document.getElementById("canvas");
     this.ctx = canvas.getContext("2d");
     this.scoreItem = document.getElementById("score");
+    this.maxScoreItem = document.getElementById("maxScore");
     this.levelItem = document.getElementById("level");
     this.gameOverItem = document.getElementById("gameOver");
+    this.roundItem = document.getElementById("round");
 
     // resize
     this.resizeFunc = this.resize.bind(this);
@@ -59,13 +63,17 @@ export default class Snake {
     if (head.x === this.food.x && head.y === this.food.y) {
       this.food = this.getRandomFoodPosition();
       this.score++;
+
+      if (this.score > this.maxScore) this.maxScore = this.score;
       this.reward = true;
-    } else if(!done) {
+    } else if (!done) {
       this.snake.pop();
     }
 
-    this.scoreItem.textContent = this.score;
-    this.levelItem.textContent = this.level;
+    if (this.scoreItem) this.scoreItem.textContent = this.score;
+    if (this.maxScoreItem) this.maxScoreItem.textContent = this.maxScore;
+    if (this.levelItem) this.levelItem.textContent = this.level;
+    if (this.roundItem) this.roundItem.textContent = this.round;
   }
   drawGrid() {
     const size = this.rectSize;
@@ -135,7 +143,7 @@ export default class Snake {
 
     const action = isUserControl ? undefined : await this.agent.act(state);
     const { state: nextState, reward, done } = this.step(action);
-    if (!isUserControl) {
+    if (isTraining) {
       await this.agent.train(state, action, reward, nextState, done);
     }
 
@@ -162,7 +170,10 @@ export default class Snake {
         score: this.score,
       });
     }
-    if (!isUserControl) this.render();
+    if (isTraining) this.render();
+    if (!isUserControl && !isTraining) {
+      requestAnimationFrame(this.render.bind(this));
+    }
   }
   changeDirection(event) {
     switch (event.key) {
@@ -208,6 +219,7 @@ export default class Snake {
       direction === "left" ? 1 : 0,
       direction === "right" ? 1 : 0,
       distanceToFood,
+      this.maxScore,
     ];
   }
   isGameOver(head = this.snake[0]) {

@@ -10,10 +10,20 @@
   <div id="app">
     <canvas id="canvas"></canvas>
     <div class="infoRow">
-      <div class="row">
-        <div class="infoItem">Score: <span id="score">0</span></div> |
-        <div class="infoItem">Level: <span id="level">1</span></div>
-      </div>
+      <table class="infoTable">
+        <thead>
+          <tr>
+            <td>Score</td>
+            <td>Max score</td>
+            <td>Round</td>
+          </tr>
+        </thead>
+        <tr>
+          <td id="score">0</td>
+          <td id="maxScore">0</td>
+          <td id="round">0</td>
+        </tr>
+      </table>
       <div class="row">
         <div id="gameOver">Game over!</div>
       </div>

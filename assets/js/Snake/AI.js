@@ -11,7 +11,7 @@ class DQNAgent {
     this.minEpsilon = minEpsilon;
     this.model = this.createModel();
     this.memory = [];
-    this.batchSize = 8;
+    this.batchSize = 6;
   }
 
   createModel() {
