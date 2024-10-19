@@ -8,6 +8,7 @@
     "build": "vite build --base=./dist"
   },
   "dependencies": {
+    "@tensorflow/tfjs": "^4.21.0",
     "sass": "^1.80.3"
   },
   "devDependencies": {

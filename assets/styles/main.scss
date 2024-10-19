@@ -27,7 +27,7 @@ color: white;
   ); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
 }
 
-.info {
+.infoRow {
   position: absolute;
   text-align: center;
   top: 100px;
@@ -35,7 +35,15 @@ color: white;
   right: 0;
   font-size: 40px;
   display: flex;
-  justify-content: center;
-  gap: 20px;
+  flex-direction: column;
   align-items: center;
+  .row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+}
+
+#gameOver {
+  display: none;
 }
