@@ -3,7 +3,6 @@ import { rnd } from "../functions.js";
 import DQNAgent from "./AI.js";
 import ApexCharts from "apexcharts";
 
-const isTraining = !true;
 
 export default class Snake {
   directions = ["up", "down", "left", "right"];
@@ -13,7 +12,6 @@ export default class Snake {
     this.rectSize = this.gridSize * this.pixelSize;
     this.round = 0;
     this.maxScore = 0;
-    this.isTraining = isTraining;
     //
     this.resetGame();
     this.agent = new DQNAgent(this.directions, this.getState().length);
@@ -57,10 +55,11 @@ export default class Snake {
     this.modelName = this.selectModel.value;
 
     this.isUserControl = this.modelName === "user";
+    this.isTraining = this.modelName === "learn";
 
     await this.agent.createModel({
       modelName: this.modelName,
-      isTraining,
+      isTraining: this.isTraining,
       isUserControl: this.isUserControl,
     });
 
@@ -72,7 +71,7 @@ export default class Snake {
       );
     }
 
-    if (isTraining) this.initChart();
+    if (this.isTraining) this.initChart();
   }
 
   update() {
@@ -184,7 +183,7 @@ export default class Snake {
     //   reward: reward,
     // });
 
-    if (isTraining) {
+    if (this.isTraining) {
       await this.agent.train(state, action, reward, nextState, done);
     }
 
@@ -205,8 +204,8 @@ export default class Snake {
         score: this.score,
       });
     }
-    if (!this.isUserControl && isTraining) this.render();
-    if (!this.isUserControl && !isTraining) {
+    if (!this.isUserControl && this.isTraining) this.render();
+    if (!this.isUserControl && !this.isTraining) {
       requestAnimationFrame(this.render.bind(this));
     }
   }

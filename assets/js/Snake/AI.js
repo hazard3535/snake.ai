@@ -4,9 +4,9 @@ class DQNAgent {
   constructor(
     actions,
     stateSize,
-    alpha = 0.001,
+    alpha = 0.1, // 0.001,
     gamma = 0.9,
-    epsilon = 0.1,
+    epsilon = 0.2,
     epsilonDecay = 0.995,
     minEpsilon = 0.01
   ) {
