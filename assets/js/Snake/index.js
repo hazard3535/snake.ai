@@ -1,9 +1,9 @@
 import { rnd } from "../functions.js";
 
 import DQNAgent from "./AI.js";
+import ApexCharts from "apexcharts";
 
-const isUserControl = !true;
-const isTraining = true;
+const isTraining = !true;
 
 export default class Snake {
   directions = ["up", "down", "left", "right"];
@@ -11,14 +11,16 @@ export default class Snake {
     this.pixelSize = pixelSize;
     this.gridSize = gridSize;
     this.rectSize = this.gridSize * this.pixelSize;
-    this.agent = new DQNAgent(this.directions, 10);
     this.round = 0;
     this.maxScore = 0;
+    this.isTraining = isTraining;
     //
     this.resetGame();
+    this.agent = new DQNAgent(this.directions, this.getState().length);
+
     this.init();
   }
-  init() {
+  async init() {
     this.canvas = document.getElementById("canvas");
     this.ctx = canvas.getContext("2d");
     this.scoreItem = document.getElementById("score");
@@ -26,6 +28,17 @@ export default class Snake {
     this.levelItem = document.getElementById("level");
     this.gameOverItem = document.getElementById("gameOver");
     this.roundItem = document.getElementById("round");
+    this.chartElem = document.getElementById("chart");
+    this.startButton = document.getElementById("startButton");
+    this.selectModel = document.getElementById("selectModel");
+
+    // change
+    this.changeModelFunc = this.changeModel.bind(this);
+    this.selectModel.addEventListener("change", this.changeModelFunc);
+
+    // start
+    this.startFunc = this.start.bind(this);
+    this.startButton.addEventListener("click", this.startFunc);
 
     // resize
     this.resizeFunc = this.resize.bind(this);
@@ -36,10 +49,30 @@ export default class Snake {
     this.changeDirectionFunc = this.changeDirection.bind(this);
     document.addEventListener("keydown", this.changeDirectionFunc);
 
+    this.draw(); // this.render();
+  }
+
+  async start() {
+    this.startButton.style.display = "none";
+    this.modelName = this.selectModel.value;
+
+    this.isUserControl = this.modelName === "user";
+
+    await this.agent.createModel({
+      modelName: this.modelName,
+      isTraining,
+      isUserControl: this.isUserControl,
+    });
+
     this.render();
-    if (isUserControl) {
-      setInterval(this.render.bind(this), 1000 - this.level * 50);
+    if (this.isUserControl) {
+      this.renderInterval = setInterval(
+        this.render.bind(this),
+        1000 - this.level * 50
+      );
     }
+
+    if (isTraining) this.initChart();
   }
 
   update() {
@@ -141,27 +174,29 @@ export default class Snake {
   async render() {
     const state = this.getState();
 
-    const action = isUserControl ? undefined : await this.agent.act(state);
+    const action = this.isUserControl ? undefined : await this.agent.act(state);
     const { state: nextState, reward, done } = this.step(action);
-    if (isTraining) {
-      await this.agent.train(state, action, reward, nextState, done);
-    }
 
-    if (done) {
-      this.gameOverItem.style.display = "block";
-      this.resetGame(); // Check for collisions
-
-      if (isUserControl) return;
-      return this.render();
-    }
-    this.gameOverItem.style.display = "none";
-    this.draw();
     // console.log("render", {
     //   // snake: this.snake,
     //   // food: this.food,
     //   direction: this.direction,
     //   reward: reward,
     // });
+
+    if (isTraining) {
+      await this.agent.train(state, action, reward, nextState, done);
+    }
+
+    if (done) {
+      this.updateChart();
+      this.gameOverItem.style.display = "block";
+      this.resetGame(); // Check for collisions
+      if (this.isUserControl) return;
+      return this.render();
+    }
+    this.gameOverItem.style.display = "none";
+    this.draw();
 
     if (reward) {
       console.log({
@@ -170,8 +205,8 @@ export default class Snake {
         score: this.score,
       });
     }
-    if (isTraining) this.render();
-    if (!isUserControl && !isTraining) {
+    if (!this.isUserControl && isTraining) this.render();
+    if (!this.isUserControl && !isTraining) {
       requestAnimationFrame(this.render.bind(this));
     }
   }
@@ -191,7 +226,7 @@ export default class Snake {
         break;
     }
   }
-  resetGame() {
+  resetGame(reset = false) {
     this.round++;
     this.level = 10;
     this.score = 0;
@@ -200,36 +235,62 @@ export default class Snake {
       { x: Math.floor(this.gridSize / 2), y: Math.floor(this.gridSize / 2) },
     ];
     this.food = this.getRandomFoodPosition();
+    if (reset) {
+      this.round = 0;
+      this.maxScore = 0;
+      this.score = 0;
+    }
   }
   getState() {
-    // Возвращает текущее состояние игры
     const head = this.snake[0];
     const food = this.food;
     const direction = this.direction;
-    const distanceToFood = Math.sqrt(
-      Math.pow(head.x - food.x, 2) + Math.pow(head.y - food.y, 2)
+
+    // Расстояние до еды
+    const distanceToFoodX = food.x - head.x;
+    const distanceToFoodY = food.y - head.y;
+
+    // Наличие препятствий (стены и тело змейки) в непосредственной близости от головы
+    const isWallUp = head.y === 0;
+    const isWallDown = head.y === this.gridSize - 1;
+    const isWallLeft = head.x === 0;
+    const isWallRight = head.x === this.gridSize - 1;
+
+    const isBodyUp = this.snake.some(
+      (segment) => segment.x === head.x && segment.y === head.y - 1
     );
+    const isBodyDown = this.snake.some(
+      (segment) => segment.x === head.x && segment.y === head.y + 1
+    );
+    const isBodyLeft = this.snake.some(
+      (segment) => segment.x === head.x - 1 && segment.y === head.y
+    );
+    const isBodyRight = this.snake.some(
+      (segment) => segment.x === head.x + 1 && segment.y === head.y
+    );
+
     return [
       head.x,
       head.y,
       food.x,
       food.y,
+      distanceToFoodX,
+      distanceToFoodY,
       direction === "up" ? 1 : 0,
       direction === "down" ? 1 : 0,
       direction === "left" ? 1 : 0,
       direction === "right" ? 1 : 0,
-      distanceToFood,
-      this.maxScore,
+      isWallUp ? 1 : 0,
+      isWallDown ? 1 : 0,
+      isWallLeft ? 1 : 0,
+      isWallRight ? 1 : 0,
+      isBodyUp ? 1 : 0,
+      isBodyDown ? 1 : 0,
+      isBodyLeft ? 1 : 0,
+      isBodyRight ? 1 : 0,
     ];
   }
   isGameOver(head = this.snake[0]) {
-    // if (this.snake.length === 2 &&
-    //   this.snake.some(
-    //     (segment) => segment.x === head.x && segment.y === head.y
-    //   )) {
-    //     return true;
-    //   }
-
     return (
       head.x < 0 ||
       head.x >= this.gridSize ||
@@ -246,12 +307,88 @@ export default class Snake {
     return this.reward ? 1 : 0;
   }
   resize() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
+    this.canvas.width = this.rectSize;
+    this.canvas.height = this.rectSize;
+    this.canvas.style.width = this.rectSize + "px";
+    this.canvas.style.height = this.rectSize + "px";
+
+    document.documentElement.style.setProperty(
+      "--canvasWidth",
+      this.rectSize + "px"
+    );
+  }
+
+  initChart() {
+    this.chartSeries = {
+      name: "Max Score",
+      data: [],
+    };
+    const options = {
+      series: [this.chartSeries],
+      xaxis: {
+        type: "numeric",
+      },
+      noData: {
+        text: "Loading...",
+      },
+      chart: {
+        id: "realtime",
+        height: 350,
+        type: "line",
+        zoom: {
+          enabled: false,
+        },
+        toolbar: {
+          show: false,
+        },
+        animations: {
+          enabled: true,
+          easing: "linear",
+          dynamicAnimation: {
+            speed: 250,
+          },
+        },
+      },
+      dataLabels: {
+        enabled: false,
+      },
+      stroke: {
+        curve: "straight",
+      },
+    };
+
+    this.chart = new ApexCharts(this.chartElem, options);
+    this.chart.render();
+  }
+  updateChart() {
+    if (!this.chart) return;
+    this.chartSeries.data.push({ x: this.round, y: this.maxScore });
+    this.chart.updateSeries([this.chartSeries]);
+  }
+  async saveModelToFile() {
+    await this.agent.saveModelToFile();
+  }
+  changeModel() {
+    console.log("changeModel", this.selectModel.value);
+    this.destroy();
+    this.resetGame(true);
+    this.start();
   }
   destroy() {
-    window.removeEventListener("resize", this.resizeFunc);
-    document.removeEventListener("keydown", this.changeDirectionFunc);
-    this.resizeFunc = null;
+    console.log("destroy");
+
+    // window.removeEventListener("resize", this.resizeFunc);
+    // document.removeEventListener("keydown", this.changeDirectionFunc);
+    // this.selectModel.removeEventListener("change", this.changeModelFunc);
+    // this.resizeFunc = null;
+    if (this.chart) {
+      this.chart.destroy();
+      this.chart = null;
+    }
+    clearInterval(this.renderInterval);
+
+    this.round = 0;
+    this.maxScore = 0;
+    this.score = 0;
   }
 }

@@ -8,26 +8,39 @@
 
 <body>
   <div id="app">
-    <canvas id="canvas"></canvas>
     <div class="infoRow">
-      <table class="infoTable">
-        <thead>
+      <div class="infoTableWrap">
+        <table class="infoTable">
+          <thead>
+            <tr>
+              <td>Score</td>
+              <td>Max score</td>
+              <td>Round</td>
+            </tr>
+          </thead>
           <tr>
-            <td>Score</td>
-            <td>Max score</td>
-            <td>Round</td>
+            <td id="score">0</td>
+            <td id="maxScore">0</td>
+            <td id="round">0</td>
           </tr>
-        </thead>
-        <tr>
-          <td id="score">0</td>
-          <td id="maxScore">0</td>
-          <td id="round">0</td>
-        </tr>
-      </table>
-      <div class="row">
+        </table>
+
+        <div class="chooseAi">
+          Choose controll:
+          <select name="selectModel" id="selectModel">
+            <option value="user">User</option>
+            <option value="beginner">Beginner AI - 10 rounds 5x5</option>
+            <option value="intermediate" selected>Intermediate AI - 80 rounds 5x5</option>
+            <option value="advanced">Advanced AI</option>
+            <option value="user-model">User model AI - 4 rounds 5x5</option>
+          </select>
+        </div>
+        <button id="startButton">Start</button>
         <div id="gameOver">Game over!</div>
       </div>
     </div>
+    <canvas id="canvas"></canvas>
+    <div id="chart"></div>
   </div>
   <script type="module" src="/assets/js/index.js"></script>
 </body>
