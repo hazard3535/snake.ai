@@ -28,16 +28,19 @@
         <div class="chooseAi">
           Choose controll:
           <select name="selectModel" id="selectModel">
-            <option value="user">User</option>
-            <option value="beginner">Beginner AI - 10 rounds 5x5</option>
-            <option value="intermediate" selected>Intermediate AI - 80 rounds 5x5</option>
-            <option value="advanced">Advanced AI</option>
-            <option value="user-model">User model AI - 4 rounds 5x5</option>
+            <option value="model-50-rounds-14-score">model-50-rounds-14-score</option>
+            <option value="model-100-rounds-23-score">model-100-rounds-23-score</option>
+            <option value="model-10x10-grid-100-rounds-2-score">model-10x10-grid-100-rounds-2-score</option>
             <option value="learn">Learn model now</option>
+            <option value="user">User</option>
           </select>
         </div>
         <button id="startButton">Start</button>
         <div id="gameOver">Game over!</div>
+        <div id="learnParams" class="learnParams">
+          Number of rounds to learn:
+          <input type="number" value="5" id="numberRounds">
+        </div>
       </div>
     </div>
     <canvas id="canvas"></canvas>

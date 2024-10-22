@@ -1,6 +1,10 @@
 $white: lightgrey;
 $margin: 60px;
 
+* {
+  box-sizing: border-box;
+}
+
 #app {
   text-align: center;
   display: flex;
@@ -82,17 +86,12 @@ html {
   min-width: var(--canvasWidth);
   color: #0f0c29;
 }
-.chooseAi{
+.chooseAi, .learnParams{
   font-size: 25px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-top: calc($margin / 2);
-  select {
-    height: 35px;
-    margin-left: calc($margin / 2);
-    font-size: 20px;
-  }
 }
 #startButton{
   height: 35px;
@@ -104,4 +103,14 @@ html {
   left: 0;
   right: 0;
   margin: auto;
+}
+
+select, input {
+  height: 35px;
+  margin-left: calc($margin / 2);
+  font-size: 20px;
+}
+.learnParams{
+margin-top: 10px;
+display: none;
 }

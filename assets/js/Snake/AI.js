@@ -20,30 +20,20 @@ class DQNAgent {
     this.memory = [];
     this.batchSize = 6;
   }
-  async createModel({ modelName, isTraining, isUserControl }) {
-    console.log('createModel', { modelName, isTraining, isUserControl });
-    
-    if (!isTraining && !isUserControl) {
-      return (this.model = await this.loadModelFromFiles(modelName));
+  async createModel({ modelName, isTraining, isUserControl, state }) {
+    this.isTraining = isTraining;
+    if (isTraining) {
+      const { success } = await fetch("http://localhost:3001/create-model", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ state }),
+      }).then((res) => res.json());
+      return success;
     }
 
-    const model = tf.sequential();
-    model.add(
-      tf.layers.dense({
-        units: 64,
-        inputShape: [this.stateSize],
-        activation: "relu",
-      })
-    );
-    model.add(tf.layers.dense({ units: 64, activation: "relu" }));
-    model.add(
-      tf.layers.dense({ units: this.actions.length, activation: "linear" })
-    );
-    model.compile({
-      optimizer: tf.train.adam(this.alpha),
-      loss: "meanSquaredError",
-    });
-    return (this.model = model);
+    return (this.model = await this.loadModelFromFiles(modelName));
   }
 
   async predict(state) {
@@ -53,54 +43,34 @@ class DQNAgent {
   }
 
   async act(state) {
-    if (Math.random() < this.epsilon) {
-      return this.actions[Math.floor(Math.random() * this.actions.length)];
+    if (this.isTraining) {
+      const { action } = await fetch("http://localhost:3001/act", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ state }),
+      }).then((res) => res.json());
+      return action;
     } else {
-      const qValues = await this.predict(state);
-      const maxQValue = Math.max(...qValues);
-      return this.actions[qValues.indexOf(maxQValue)];
-    }
-  }
-
-  remember(state, action, reward, nextState, done) {
-    this.memory.push({ state, action, reward, nextState, done });
-    if (this.memory.length > 10000) {
-      this.memory.shift();
-    }
-  }
-
-  async replay() {
-    if (this.memory.length < this.batchSize) return;
-
-    const batch = [];
-    for (let i = 0; i < this.batchSize; i++) {
-      batch.push(this.memory[Math.floor(Math.random() * this.memory.length)]);
-    }
-
-    for (const { state, action, reward, nextState, done } of batch) {
-      const target =
-        reward +
-        (done ? 0 : this.gamma * Math.max(...(await this.predict(nextState))));
-      const targetQValues = await this.predict(state);
-      targetQValues[this.actions.indexOf(action)] = target;
-
-      const input = tf.tensor2d([state], [1, this.stateSize]);
-      const targetTensor = tf.tensor2d(
-        [targetQValues],
-        [1, this.actions.length]
-      );
-
-      await this.model.fit(input, targetTensor, { epochs: 1 });
-    }
-
-    if (this.epsilon > this.minEpsilon) {
-      this.epsilon *= this.epsilonDecay;
+      if (Math.random() < this.epsilon) {
+        return this.actions[Math.floor(Math.random() * this.actions.length)];
+      } else {
+        const qValues = await this.predict(state);
+        const maxQValue = Math.max(...qValues);
+        return this.actions[qValues.indexOf(maxQValue)];
+      }
     }
   }
 
   async train(state, action, reward, nextState, done) {
-    this.remember(state, action, reward, nextState, done);
-    await this.replay();
+    await fetch("http://localhost:3001/train", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ state, action, reward, nextState, done }),
+    });
   }
 
   async saveModel(path) {
@@ -110,12 +80,19 @@ class DQNAgent {
   async loadModel(path) {
     this.model = await tf.loadLayersModel(path);
   }
-  async saveModelToFile() {
-    await this.model.save("downloads://snake-dqn-model");
+  async saveModelToFile({ round, maxScore, gridSize }) {
+    const { success } = await fetch("http://localhost:3001/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ round, maxScore, gridSize }),
+    }).then((res) => res.json());
+    return success;
   }
   async loadModelFromFiles(modelName) {
-    const modelJsonPath = `assets/models/${modelName}/snake-dqn-model.json`;
-    const modelWeightsPath = `assets/models/${modelName}/snake-dqn-model.weights.bin`;
+    const modelJsonPath = `assets/models/${modelName}/model.json`;
+    const modelWeightsPath = `assets/models/${modelName}/weights.bin`;
     console.log("loadModelFromFiles", modelJsonPath, modelWeightsPath);
 
     return await tf.loadLayersModel(

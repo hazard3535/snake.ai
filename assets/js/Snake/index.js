@@ -3,10 +3,9 @@ import { rnd } from "../functions.js";
 import DQNAgent from "./AI.js";
 import ApexCharts from "apexcharts";
 
-
 export default class Snake {
   directions = ["up", "down", "left", "right"];
-  constructor({ gridSize = 10, pixelSize = 40 } = {}) {
+  constructor({ gridSize = 5, pixelSize = 40 } = {}) {
     this.pixelSize = pixelSize;
     this.gridSize = gridSize;
     this.rectSize = this.gridSize * this.pixelSize;
@@ -33,6 +32,7 @@ export default class Snake {
     // change
     this.changeModelFunc = this.changeModel.bind(this);
     this.selectModel.addEventListener("change", this.changeModelFunc);
+    this.changeModel()
 
     // start
     this.startFunc = this.start.bind(this);
@@ -57,10 +57,12 @@ export default class Snake {
     this.isUserControl = this.modelName === "user";
     this.isTraining = this.modelName === "learn";
 
+    const state = this.getState();
     await this.agent.createModel({
       modelName: this.modelName,
       isTraining: this.isTraining,
       isUserControl: this.isUserControl,
+      state
     });
 
     this.render();
@@ -179,6 +181,7 @@ export default class Snake {
     // console.log("render", {
     //   // snake: this.snake,
     //   // food: this.food,
+    //   action,
     //   direction: this.direction,
     //   reward: reward,
     // });
@@ -204,7 +207,15 @@ export default class Snake {
         score: this.score,
       });
     }
-    if (!this.isUserControl && this.isTraining) this.render();
+    if (!this.isUserControl && this.isTraining) {
+      if (this.round < document.getElementById("numberRounds").value) {
+        this.render();
+      } else {
+        console.log("Training is complete");
+        this.startButton.style.display = "block";
+        this.saveModelToFile()
+      }
+    }
     if (!this.isUserControl && !this.isTraining) {
       requestAnimationFrame(this.render.bind(this));
     }
@@ -365,13 +376,20 @@ export default class Snake {
     this.chart.updateSeries([this.chartSeries]);
   }
   async saveModelToFile() {
-    await this.agent.saveModelToFile();
+    await this.agent.saveModelToFile({
+      round: this.round,
+      maxScore: this.maxScore,
+      gridSize: this.gridSize,
+    });
   }
-  changeModel() {
+  changeModel(value) {
     console.log("changeModel", this.selectModel.value);
+
+    document.getElementById("learnParams").style.display =
+      this.selectModel.value === "learn" ? "block" : "none";
     this.destroy();
-    this.resetGame(true);
-    this.start();
+    // this.resetGame(true);
+    // this.start();
   }
   destroy() {
     console.log("destroy");
