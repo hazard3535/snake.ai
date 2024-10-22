@@ -51,6 +51,7 @@ export default class Snake {
   }
 
   async start() {
+    this.resetGame(true); // Check for collisions
     this.startButton.style.display = "none";
     this.modelName = this.selectModel.value;
 

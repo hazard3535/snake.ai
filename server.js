@@ -1,5 +1,6 @@
 import express from "express";
-import tf from "@tensorflow/tfjs-node";
+// import tf from "@tensorflow/tfjs-node";
+import tf from "@tensorflow/tfjs-node-gpu";
 import cors from "cors";
 import path from "path";
 
@@ -28,9 +29,9 @@ function createModel({ state }) {
   if (state) stateSize = state.length;
   const model = tf.sequential();
   model.add(
-    tf.layers.dense({ units: 128, inputShape: [stateSize], activation: "relu" })
+    tf.layers.dense({ units: 64, inputShape: [stateSize], activation: "relu" })
   );
-  model.add(tf.layers.dense({ units: 128, activation: "relu" }));
+  model.add(tf.layers.dense({ units: 64, activation: "relu" }));
   model.add(tf.layers.dense({ units: actions.length, activation: "linear" }));
   model.compile({ optimizer: tf.train.adam(alpha), loss: "meanSquaredError" });
   return model;
